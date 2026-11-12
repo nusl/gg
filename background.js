@@ -16,6 +16,7 @@ async function handle(message, sender) {
   const ui = sender.url === chrome.runtime.getURL('index.html');
   let job = await read();
   if (message.type === 'get' && ui) return job || null;
+  if (message.type === 'history' && ui) return (await chrome.storage.local.get('history')).history || [];
   if (message.type === 'start' && ui) {
     if (job?.status === 'running') throw Error('確認中');
     const domain = GG.normalize(message.domain);
@@ -23,6 +24,8 @@ async function handle(message, sender) {
     job = {id: crypto.randomUUID(), tabId: tab.id, domain, contact: DEFAULT_CONTACT,
       status: 'running', reason: '確認中', started: Date.now(), submitted: false, domainSeen: null, actions: {}};
     await save(job);
+    const history = (await chrome.storage.local.get('history')).history || [];
+    await chrome.storage.local.set({history: [domain, ...history.filter(item => item !== domain)].slice(0, 5)});
     await chrome.alarms.create('timeout', {when: Date.now() + TIMEOUT});
     try { await chrome.tabs.update(tab.id, {url: 'https://workspace.google.com/business/signup/welcome?hl=ja'}); }
     catch { return save({...job, status: 'unknown', reason: '確認画面を開けませんでした。', finished: Date.now()}); }

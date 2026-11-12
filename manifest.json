@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "gg | Workspace ドメインチェック",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Google Workspace の申込画面を確認画面まで操作し、ドメインの表示結果を確認します。",
   "minimum_chrome_version": "112",
   "permissions": [

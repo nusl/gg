@@ -40,3 +40,46 @@ test('タイムアウト後も同じ実行の手動確認を15分まで受け付
 test('別タブからの完了通知と過去の実行IDは拒否',async()=>{const h=await harness('bring',bring);await h.send({type:'finish',id:'run1',result:{status:'ok'}},{tab:{id:2},frameId:0,url:h.w.location.href});assert.equal(h.job().status,'running');await h.send({type:'finish',id:'old',result:{status:'ok'}});assert.equal(h.job().status,'running');h.close();});
 test('明示的に停止した実行は手動確認で復活しない',async()=>{const h=await harness('bring',bring);await h.send({type:'stop'},{url:'chrome-extension://test/index.html'});h.navigate('/business/signup/bringconfirm',confirm('example.co.jp'));await h.tick();assert.equal(h.job().status,'unknown');h.close();});
 test('対象ドメインの使用中警告を判定',async()=>{const h=await harness('bring',bring);await h.tick();h.w.document.body.insertAdjacentHTML('beforeend','<p>このドメイン名はすでに使用されています。</p>');await h.tick();assert.equal(h.job().status,'used');h.close();});
+test('黒文字の既存サブスクリプション表示を検出し、追加操作しない',async()=>{
+ const h=await harness('bring',bring);await h.tick();
+ h.navigate('/business/signup/existing','<h1 style="color:black">既存のサブスクリプションが見つかりました</h1><p>ドメイン example.co.jp には既にGoogle Workspace サブスクリプションが関連付けられています。続行するには、既存example.co.jpのメールアドレスを入力するか、別のドメインを使用してください。</p><input type="email"><button>次へ</button>');
+ let clicks=0;h.w.document.querySelector('button').onclick=()=>clicks++;
+ await h.tick();assert.equal(h.job().status,'used');assert.equal(clicks,0);assert.equal(h.w.document.querySelector('input').value,'');h.close();
+});
+test('別ドメインのサブスクリプション表示は既存利用と判定しない',async()=>{
+ const h=await harness('bring',bring);await h.tick();
+ h.navigate('/business/signup/existing','既存のサブスクリプションが見つかりました other.co.jp Google Workspace サブスクリプション');
+ await h.tick();assert.equal(h.job().status,'running');h.close();
+});
+test('UI再起動時は空欄と未表示、履歴クリックですぐ確認',async()=>{
+ const d=new JSDOM(source('index.html'),{runScripts:'outside-only'});const w=d.window;
+ let changed;const messages=[];
+ w.chrome={storage:{onChanged:{addListener:f=>changed=f}},runtime:{sendMessage:async m=>{
+ messages.push(m);if(m.type==='history')return ['example.co.jp','example.net'];
+ if(m.type==='start')return {id:'new',domain:m.domain,status:'running'};
+ throw Error('unexpected');
+ }}};
+ w.eval(source('core.js'));w.eval(source('ui.js'));await new Promise(r=>setImmediate(r));
+ assert.equal(w.document.getElementById('domain').value,'');
+ changed({job:{newValue:{id:'old',domain:'old.example',status:'ok'}}},'session');
+ assert.equal(w.document.getElementById('result').textContent,'—');
+ w.document.querySelector('#history button').click();await new Promise(r=>setImmediate(r));
+ assert.equal(messages.find(m=>m.type==='start').domain,'example.co.jp');
+ assert.equal(w.document.getElementById('domain').value,'example.co.jp');
+ changed({job:{newValue:{id:'new',domain:'example.co.jp',status:'used'}}},'session');
+ assert.equal(w.document.getElementById('result').textContent,'既存利用の表示あり');w.close();
+});
+test('履歴は直近5ドメインのみ、再利用は先頭へ、結果を保存しない',async()=>{
+ let job=null,history=[];let listener;
+ const chrome={runtime:{getURL:n=>'chrome-extension://test/'+n,onMessage:{addListener:f=>listener=f}},storage:{
+ session:{get:async()=>({job}),set:async v=>job=v.job},
+ local:{get:async()=>({history}),set:async v=>history=v.history}},
+ action:{onClicked:{addListener(){}}},tabs:{onRemoved:{addListener(){}},create:async()=>({id:1}),update:async()=>{}},
+ alarms:{create:async()=>{},onAlarm:{addListener(){}}}};
+ vm.runInNewContext(source('background.js'),{chrome,GG:require(path.join(root,'core.js')),importScripts(){},crypto:require('node:crypto'),Date});
+ const send=m=>new Promise(r=>listener(m,{url:'chrome-extension://test/index.html'},r));
+ for(const domain of ['one.example','two.example','three.example','four.example','five.example','six.example','three.example']){
+  const result=await send({type:'start',domain});assert.equal(result.status,'running');job.status='ok';
+ }
+ assert.deepEqual(Array.from(await send({type:'history'})),['three.example','six.example','five.example','four.example','two.example']);
+});
