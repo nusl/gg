@@ -1,1 +1,29 @@
-{"manifest_version":3,"name":"gg | Workspace ドメインチェック","version":"0.1.0","description":"Google Workspace の申込画面を確認画面まで操作し、ドメインの表示結果を確認します。","minimum_chrome_version":"112","permissions":["storage","alarms"],"background":{"service_worker":"background.js"},"action":{"default_title":"gg を開く"},"content_scripts":[{"matches":["https://workspace.google.com/business/signup/*"],"js":["core.js","content.js"],"run_at":"document_idle"}]}
+{
+  "manifest_version": 3,
+  "name": "gg | Workspace ドメインチェック",
+  "version": "0.2.0",
+  "description": "Google Workspace の申込画面を確認画面まで操作し、ドメインの表示結果を確認します。",
+  "minimum_chrome_version": "112",
+  "permissions": [
+    "storage",
+    "alarms"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "gg を開く"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://workspace.google.com/business/signup/*"
+      ],
+      "js": [
+        "core.js",
+        "content.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ]
+}

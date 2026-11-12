@@ -8,3 +8,4 @@ test('ドメインの部分一致や文言の不足を拒否',()=>{for(const tex
 test('使用中表示は送信ドメインと入力欄を照合',()=>{const x={...base,url:'https://workspace.google.com/business/signup/bring',text:'このドメイン名はすでに使用されています。'};assert.equal(classify(x).status,'used');assert.equal(classify({...x,field:'other.jp'}),null);});
 test('サブスクリプション表示と対象ドメインを照合',()=>{const x={...base,url:'https://workspace.google.com/business/signup/bring',text:'既存のサブスクリプションが見つかりました ドメイン example.co.jp には既にGoogle Workspace サブスクリプションが関連付けられています。'};assert.equal(classify(x).status,'used');assert.equal(classify({...x,text:x.text.replace('example.co.jp','other.jp')}),null);});
 test('単なる遷移や通信エラーから成功を推測しない',()=>assert.equal(classify({...base,url:'https://workspace.google.com/business/signup/bring',text:'通信エラー'}),null));
+

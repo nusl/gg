@@ -8,9 +8,10 @@
     if(s.length>253 || labels.length<2 || labels.some(x=>! /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(x)) || /^\d+$/.test(labels.at(-1))) throw Error('有効なドメインを入力してください。');
     return s;
   }
-  function classify({url,text,domain,submitted,field}){
+  function classify({url,text,domain,submitted,domainSeen,field}){
     let u;try{u=new URL(url);}catch{return null;}
-    if(u.origin!=='https://workspace.google.com' || !submitted) return null;
+    if(u.origin!=='https://workspace.google.com' || !u.pathname.startsWith('/business/signup/')) return null;
+    if(!submitted && domainSeen !== domain) return null;
     const t=text.replace(/\s+/g,' ');
     const escaped=domain.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
     const matchesDomain=new RegExp('(^|[^a-z0-9.-])'+escaped+'($|[^a-z0-9.-])','i').test(t);
@@ -25,3 +26,4 @@
   root.GG={normalize,classify};
   if(typeof module!=='undefined') module.exports=root.GG;
 })(globalThis);
+
